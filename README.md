@@ -36,7 +36,7 @@ The SDRplay API should be installed before this module is built.
 
 ```
 cd gr-sdrplay3
-mkdir build && cd build && cmake .. && make
+sudo mkdir build && cd build && sudo cmake .. && sudo make
 sudo make install
 ```
 
