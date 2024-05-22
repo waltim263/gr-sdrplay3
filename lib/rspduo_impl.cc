@@ -618,72 +618,17 @@ bool rspduo_impl::start()
         return rsp_impl::start();
     }
 
-    // since sdrplay_api_Init() resets channelB settings to channelA values,
-    // we need to save all the settings for channelB before sdrplay_api_Init()
-    // and reapply all those that the user can change (like center frequency)
-    // only needed in dual tuner mode
-    sdrplay_api_RxChannelParamsT rxChannelB = *device_params->rxChannelB;
-
-    if (!rsp_impl::start_api_init())
-        return false;
-
-    // restore channelB settings that the user can change in independent RX
-    // mode (which is an option available for dual tuner mode)
-    if (device.rspDuoMode == sdrplay_api_RspDuoMode_Dual_Tuner) {
-        sdrplay_api_ReasonForUpdateT reason = sdrplay_api_Update_None;
-
-        // 1. tuner params
-        const sdrplay_api_TunerParamsT& tuner_before = rxChannelB.tunerParams;
-        sdrplay_api_TunerParamsT& tuner = device_params->rxChannelB->tunerParams;
-        // 1A. gains
-        if (tuner.gain.gRdB != tuner_before.gain.gRdB) {
-            tuner.gain.gRdB = tuner_before.gain.gRdB;
-            reason = (sdrplay_api_ReasonForUpdateT)(reason | sdrplay_api_Update_Tuner_Gr);
-        }
-        if (tuner.gain.LNAstate != tuner_before.gain.LNAstate) {
-            tuner.gain.LNAstate = tuner_before.gain.LNAstate;
-            reason = (sdrplay_api_ReasonForUpdateT)(reason | sdrplay_api_Update_Tuner_Gr);
-        }
-
-        // 1B. frequency
-        if (tuner.rfFreq.rfHz != tuner_before.rfFreq.rfHz) {
-            tuner.rfFreq.rfHz = tuner_before.rfFreq.rfHz;
-            reason = (sdrplay_api_ReasonForUpdateT)(reason | sdrplay_api_Update_Tuner_Frf);
-        }
-
-        // 2. control params
-        const sdrplay_api_ControlParamsT& ctrl_before = rxChannelB.ctrlParams;
-        sdrplay_api_ControlParamsT& ctrl = device_params->rxChannelB->ctrlParams;
-
-        // 2A. AGC
-        if (ctrl.agc.enable != ctrl_before.agc.enable) {
-            ctrl.agc.enable = ctrl_before.agc.enable;
-            reason = (sdrplay_api_ReasonForUpdateT)(reason | sdrplay_api_Update_Ctrl_Agc);
-        }
-
-        // 3. RSPduo tuner params
-        const sdrplay_api_RspDuoTunerParamsT& rspDuoTuner_before = rxChannelB.rspDuoTunerParams;
-        sdrplay_api_RspDuoTunerParamsT& rspDuoTuner = device_params->rxChannelB->rspDuoTunerParams;
-
-        // 3A. AM port select
-        if (rspDuoTuner.tuner1AmPortSel != rspDuoTuner_before.tuner1AmPortSel) {
-            rspDuoTuner.tuner1AmPortSel = rspDuoTuner_before.tuner1AmPortSel;
-            reason = (sdrplay_api_ReasonForUpdateT)(reason | sdrplay_api_Update_RspDuo_AmPortSelect);
-        }
-
-        if (reason != sdrplay_api_Update_None) {
-            sdrplay_api_ErrT err;
-            err = sdrplay_api_Update(device.dev, sdrplay_api_Tuner_B, reason, sdrplay_api_Update_Ext1_None);
-            if (err != sdrplay_api_Success) {
-                d_logger->error("sdrplay_api_Update({:0x%08x}) Error: {}", static_cast<unsigned int>(reason), sdrplay_api_GetErrorString(err));
-                return false;
-            }
-        }
+    // handle the case for the RSPduo with indepedent receivers since for some
+    // reason sdrplay_api_Init() with set the second tuner center frequency to
+    // the same value of the first tuner
+    sdrplay_api_RxChannelParamsT *rxChannelB = device_params->rxChannelB;
+    double tuner2freq =rxChannelB->tunerParams.rfFreq.rfHz;
+    bool status = rsp_impl::start();
+    if (!status) {
+        return status;
     }
-
-    //print_device_config();
-    run_status = RunStatus::init;
-    return true;
+    set_center_freq(tuner2freq, 1);
+    return status;
 }
 
 
