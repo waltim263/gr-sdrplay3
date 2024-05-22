@@ -274,10 +274,9 @@ parameters:
 
 - id: bandwidth
   label: Bandwidth (Hz)
-  dtype: enum
-  options: [0, 200e3, 300e3, 600e3, 1536e3, 5000e3, 6000e3, 7000e3, 8000e3]
-  option_labels: [AUTO, 200k, 300k, 600k, 1.536M, 5M, 6M, 7M, 8M]
+  dtype: real
   default: 0
+  hide: part
 
 # Gain options
 - id: AGC
